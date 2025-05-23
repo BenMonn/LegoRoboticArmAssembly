@@ -313,7 +313,7 @@
                     <geom mesh="link7_6" material="black" class="visual"/>
                     <geom mesh="link7_7" material="white" class="visual"/>
                     <geom mesh="link7_c" class="panda_collision"/>
-                    <body name="palm" pos="0.05 0 0.1365" quat="0 1 0 1" childclass="allegro_right">
+                    <body name="palm" pos="-0.0075 0 0.20175" quat="0 0 0 1" childclass="allegro_right">
                       <inertial mass="0.4154" pos="0 0 0.0475" diaginertia="1e-4 1e-4 1e-4"/>
                       <geom class="visual" mesh="base_link"/>
                       <geom class="palm_collision"/>
