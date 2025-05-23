@@ -1,0 +1,7 @@
+Each python file runs the simulation differently.
+
+sim_combo.py is a keyboard binded control simulation.
+
+simcombo.py is a control simulation controlled from the python file.
+
+simulate_combo.py just loads the simulation, and then you can control the robot inside using the control panel and clicking on each actuator.
