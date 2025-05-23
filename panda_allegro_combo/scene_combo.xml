@@ -1,4 +1,0 @@
-<mujoco model="test_panda_only">
-  <include file="right_hand.xml"/>
-</mujoco>
-
