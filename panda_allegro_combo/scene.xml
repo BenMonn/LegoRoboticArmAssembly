@@ -1,0 +1,4 @@
+<mujoco model="mjxpandamerged">
+    <include file="mjxpandamerged.xml"/>
+</mujoco>
+
