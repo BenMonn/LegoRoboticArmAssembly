@@ -466,5 +466,12 @@
     <position name="tha2" joint="thj2" class="thumb_medial"/>
     <position name="tha3" joint="thj3" class="thumb_distal"/>
   </actuator>
+
+  <sensor>
+    <force name="ff_tip_contact" site="ff_tip_site"/>
+    <force name="mf_tip_contact" site="mf_tip_site"/>
+    <force name="rf_tip_contact" site="rf_tip_site"/>
+    <force name="th_tip_contact" site="th_tip_site"/>
+  </sensor>
   
 </mujoco>
