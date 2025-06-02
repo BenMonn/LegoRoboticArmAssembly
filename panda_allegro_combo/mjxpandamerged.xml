@@ -2,7 +2,6 @@
   <compiler angle="radian" meshdir="assets" autolimits="true"/>
 
   <option cone="elliptic" impratio="10"/>
-  <!--<option integrator="RK4" timestep="0.001"/>-->
 
   <default>
     <default class="visual">
