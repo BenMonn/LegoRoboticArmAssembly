@@ -3,23 +3,23 @@ To load the model: simulate_combo.py
 Instructions on running the rest of the files:
 
 Run `smoke_test_stack.py` to see an attempt at an example run for SimCLR:
-```
+```bash
 python smoke_test_stack.py
 ```
 
 Run `collect_pairs.py` to collect the dataset:
-```
+```bash
 python collect_pairs.py --xml /path/to/your/scene.xml --out simclr_pairs --camera global_cam --pairs 5000 --img_size 224
 ```
 Note: you will need to change "/path/to/your/scene.xml" to your path
 
 Run `train_simclr_sanity.py` to train SimCLR:
-```
+```bash
 python train_simclr_sanity.py --root simclr_pairs --csv simclr_pairs/pairs.csv --epochs 10 --batch 64
 ```
 
 Run `linear_probe.py` to see if SimCLR learns a useful representation:
-```
+```bash
 python linear_probe.py --root simclr_pairs --csv simclr_pairs/pairs_labeled.csv --ckpt /path/to/your/simclr_checkpoint.pt --out probe_out --epochs 10
 ```
 Note: you will need to change "/path/to/your/simclr_checkpoint.pt" to your path
