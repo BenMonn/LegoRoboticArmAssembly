@@ -2,7 +2,7 @@ import mujoco
 import mujoco.viewer
 
 # Path to the merged XML file
-model_path = "/home/yourusername/mujoco_menagerie/panda_allegro_combo/scene.xml"
+model_path = "/path/to/your/scene.xml"
 model = mujoco.MjModel.from_xml_path(model_path)
 print(model)
 
