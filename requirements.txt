@@ -1,0 +1,1 @@
+Necessary imports: mujoco, gymnasium, numpy, Pillow, torch, torchvision, and imagio
