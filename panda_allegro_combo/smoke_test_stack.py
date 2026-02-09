@@ -5,7 +5,7 @@ import mujoco.viewer
 import time
 import imageio.v2 as imageio
 
-XML_PATH = "/home/bmonn/panda_allegro_combo/LegoRoboticArmAssembly/panda_allegro_combo/scene.xml"
+XML_PATH = "/path/to/your/scene.xml"
 
 #export MUJOCO_GL="egl"
 
