@@ -1,7 +1,25 @@
-Each python file runs the simulation differently.
+To load the model: simulate_combo.py
 
-sim_combo.py is a keyboard binded control simulation.
+Instructions on running the rest of the files:
 
-simcombo.py is a control simulation controlled from the python file.
+Run `smoke_test_stack.py` to see an attempt at an example run for SimCLR:
+```
+python smoke_test_stack.py
+```
 
-simulate_combo.py just loads the simulation, and then you can control the robot inside using the control panel and clicking on each actuator.
+Run `collect_pairs.py` to collect the dataset:
+```
+python collect_pairs.py --xml /path/to/your/scene.xml --out simclr_pairs --camera global_cam --pairs 5000 --img_size 224
+```
+Note: you will need to change "/path/to/your/scene.xml" to your path
+
+Run `train_simclr_sanity.py` to train SimCLR:
+```
+python train_simclr_sanity.py --root simclr_pairs --csv simclr_pairs/pairs.csv --epochs 10 --batch 64
+```
+
+Run `linear_probe.py` to see if SimCLR learns a useful representation:
+```
+python linear_probe.py --root simclr_pairs --csv simclr_pairs/pairs_labeled.csv --ckpt /path/to/your/simclr_checkpoint.pt --out probe_out --epochs 10
+```
+Note: you will need to change "/path/to/your/simclr_checkpoint.pt" to your path
