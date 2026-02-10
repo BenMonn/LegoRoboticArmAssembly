@@ -1,6 +1,10 @@
 To load the model: 
 
-`simulate_combo.py`
+```bash
+python simulate_combo.py
+```
+
+Note: you will need to change the path file inside of `simulate_combo.py`
 
 ---
 
@@ -11,6 +15,8 @@ Run `smoke_test_stack.py` to see an attempt at an example run for SimCLR:
 ```bash
 python smoke_test_stack.py
 ```
+
+Note: you will need to change the path file inside `smoke_test_stack.py`
 
 Run `collect_pairs.py` to collect the dataset:
 
