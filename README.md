@@ -5,4 +5,5 @@ The Franka Emika Panda robot arm and the Allegro right hand are files taken from
 
 https://github.com/google-deepmind/mujoco_menagerie/blob/main/README.md
 
+Instructions:
 I suggest just going to the training folder and running the scripts from the README.md file there for the most up-to-date work.
