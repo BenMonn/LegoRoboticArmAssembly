@@ -1,27 +1,3 @@
-"""
-render_video.py
-
-Rolls out the trained agent and saves an MP4 demo video using MuJoCo's
-offscreen OpenGL renderer (no display required — works over SSH).
-
-Usage:
-    python render_video.py \
-        --checkpoint ~/panda_lego/checkpoints/hold_agent_10000.pkl \
-        --out demo.mp4 \
-        --episodes 3 \
-        --width 1280 --height 720
-
-Requirements:
-    pip install imageio[ffmpeg] --break-system-packages
-    (MuJoCo, JAX, Flax already installed)
-
-The video shows:
-  - Camera angle: side + slight top-down (set below)
-  - Palm trajectory traced as a red dot overlay
-  - Episode number and reward overlaid as text
-  - Multiple episodes concatenated
-"""
-
 import os, sys, pickle, argparse
 import numpy as np
 import mujoco
@@ -39,7 +15,7 @@ sys.path.insert(0, os.path.expanduser("~/panda_lego"))
 from envs.lego_env import LegoEnv, build_model
 from training.encoders import LegoAgent
 
-# ── Config (must match training) ──────────────────────────────────────────────
+# Config (must match training)
 TARGET_POS = np.array([0.5, 0.15, 0.42])
 MAX_EP_STEPS = 300
 SUCCESS_THRESH = 0.05
@@ -59,7 +35,7 @@ BRICK_START = np.array([0.35, 0.0, 0.42])
 ROBOT_XML  = os.path.expanduser("~/panda_lego/models/mjxpandamerged.xml")
 ASSETS_DIR = os.path.expanduser("~/panda_lego/models/assets")
 
-# ── Camera angles (try multiple for best view) ────────────────────────────────
+# Camera angles (try multiple for best view)
 CAMERAS = [
     # (azimuth, elevation, distance, lookat_xyz)
     (135, -25, 1.8, [0.45, 0.1, 0.45]),   # main 3/4 view
@@ -68,7 +44,7 @@ CAMERAS = [
 ]
 SELECTED_CAM = 0   # change to 1 or 2 to try different angles
 
-# ── Environment ───────────────────────────────────────────────────────────────
+# Environment
 class RenderEnv:
     def __init__(self, model):
         self.model      = model
@@ -120,7 +96,7 @@ class RenderEnv:
         return self.data.qpos[23:26].copy()
 
 
-# ── Renderer ──────────────────────────────────────────────────────────────────
+# Renderer
 def setup_camera(renderer, cam_idx=0):
     az, el, dist, lookat = CAMERAS[cam_idx]
     renderer.scene.camera.azimuth   = az
@@ -130,8 +106,6 @@ def setup_camera(renderer, cam_idx=0):
 
 
 def add_text_overlay(frame, lines, top=True):
-    """Add simple text overlay using numpy (no OpenCV required)."""
-    # We'll write text by burning pixels - simple but works
     # Using PIL if available, otherwise skip overlay
     try:
         from PIL import Image, ImageDraw, ImageFont
@@ -245,7 +219,7 @@ def render_episodes(ckpt_path, out_path, n_episodes=3, width=1280, height=720, f
     print(f"\n✅ Video saved: {out_path}  ({len(all_frames)/fps:.1f}s)")
 
 
-# ── CLI ───────────────────────────────────────────────────────────────────────
+# CLI
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", default=os.path.expanduser(
