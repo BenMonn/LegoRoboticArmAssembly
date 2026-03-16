@@ -1,1 +1,1 @@
-Necessary imports: mujoco, gymnasium, numpy, Pillow, torch, torchvision, and imagio
+Necessary imports: mujoco, gymnasium, numpy, torch, torchvision, and imagio
