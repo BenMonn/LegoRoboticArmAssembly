@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="panda_allegro">
+
+  <link name="world">
+  </link>
+
+  <link name="link0">
+  </link>
+
+  <link name="link1">
+    <inertial>
+      <origin xyz="0.003875 0.002081 -0.04762" rpy="0 0 0"/>
+      <mass value="4.97068"/>
+      <inertia ixx="0.70337" ixy="-0.000139" ixz="0.006772" iyy="0.70661" iyz="0.019169" izz="0.009117"/>
+    </inertial>
+  </link>
+
+  <link name="link2">
+    <inertial>
+      <origin xyz="-0.003141 -0.02872 0.003495" rpy="0 0 0"/>
+      <mass value="0.646926"/>
+      <inertia ixx="0.007962" ixy="-0.003925" ixz="0.010254" iyy="0.02811" iyz="0.000704" izz="0.025995"/>
+    </inertial>
+  </link>
+
+  <link name="link3">
+    <inertial>
+      <origin xyz="0.027518 0.039252 -0.066502" rpy="0 0 0"/>
+      <mass value="3.2286"/>
+      <inertia ixx="0.037242" ixy="-0.004761" ixz="-0.011396" iyy="0.036155" iyz="-0.012805" izz="0.01083"/>
+    </inertial>
+  </link>
+
+  <link name="link4">
+    <inertial>
+      <origin xyz="-0.05317 0.104419 0.027454" rpy="0 0 0"/>
+      <mass value="3.5879"/>
+      <inertia ixx="0.025853" ixy="0.007796" ixz="-0.001332" iyy="0.019552" iyz="0.008641" izz="0.028323"/>
+    </inertial>
+  </link>
+
+  <link name="link5">
+    <inertial>
+      <origin xyz="-0.011953 0.041065 -0.038437" rpy="0 0 0"/>
+      <mass value="1.22595"/>
+      <inertia ixx="0.035549" ixy="-0.002117" ixz="-0.004037" iyy="0.029474" iyz="0.000229" izz="0.008627"/>
+    </inertial>
+  </link>
+
+  <link name="link6">
+    <inertial>
+      <origin xyz="0.060149 -0.014117 -0.010517" rpy="0 0 0"/>
+      <mass value="1.66656"/>
+      <inertia ixx="0.001964" ixy="0.000109" ixz="-0.001158" iyy="0.004354" iyz="0.000341" izz="0.005433"/>
+    </inertial>
+  </link>
+
+  <link name="link7">
+    <inertial>
+      <origin xyz="0.010517 -0.004252 0.061597" rpy="0 0 0"/>
+      <mass value="0.735522"/>
+      <inertia ixx="0.012516" ixy="-0.000428" ixz="-0.001196" iyy="0.010027" iyz="-0.000741" izz="0.004815"/>
+    </inertial>
+  </link>
+
+  <link name="palm">
+    <inertial>
+      <origin xyz="0 0 0.0475" rpy="0 0 0"/>
+      <mass value="0.4154"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+  </link>
+
+  <link name="ff_base">
+  </link>
+
+  <link name="ff_proximal">
+  </link>
+
+  <link name="ff_medial">
+  </link>
+
+  <link name="ff_distal">
+  </link>
+
+  <link name="ff_tip">
+  </link>
+
+  <link name="mf_base">
+  </link>
+
+  <link name="mf_proximal">
+  </link>
+
+  <link name="mf_medial">
+  </link>
+
+  <link name="mf_distal">
+  </link>
+
+  <link name="mf_tip">
+  </link>
+
+  <link name="rf_base">
+  </link>
+
+  <link name="rf_proximal">
+  </link>
+
+  <link name="rf_medial">
+  </link>
+
+  <link name="rf_distal">
+  </link>
+
+  <link name="rf_tip">
+  </link>
+
+  <link name="th_base">
+  </link>
+
+  <link name="th_proximal">
+  </link>
+
+  <link name="th_medial">
+  </link>
+
+  <link name="th_distal">
+  </link>
+
+  <link name="th_tip">
+  </link>
+
+  <joint name="world_to_link0" type="fixed">
+    <parent link="world"/>
+    <child link="link0"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="joint1" type="revolute">
+    <parent link="link0"/>
+    <child link="link1"/>
+    <origin xyz="0 0 0.333" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.8973" upper="2.8973" effort="100" velocity="2.0"/>
+    <dynamics damping="40" friction="0.0"/>
+  </joint>
+
+  <joint name="joint2" type="revolute">
+    <parent link="link1"/>
+    <child link="link2"/>
+    <origin xyz="0 0 0" rpy="-2.03444 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.7628" upper="1.7628" effort="100" velocity="2.0"/>
+    <dynamics damping="40" friction="0.0"/>
+  </joint>
+
+  <joint name="joint3" type="revolute">
+    <parent link="link2"/>
+    <child link="link3"/>
+    <origin xyz="0 -0.316 0" rpy="2.03444 -0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.8973" upper="2.8973" effort="100" velocity="2.0"/>
+    <dynamics damping="40" friction="0.0"/>
+  </joint>
+
+  <joint name="joint4" type="revolute">
+    <parent link="link3"/>
+    <child link="link4"/>
+    <origin xyz="0.0825 0 0" rpy="2.03444 -0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.0718" upper="-0.0698" effort="100" velocity="2.0"/>
+    <dynamics damping="40" friction="0.0"/>
+  </joint>
+
+  <joint name="joint5" type="revolute">
+    <parent link="link4"/>
+    <child link="link5"/>
+    <origin xyz="-0.0825 0.384 0" rpy="-2.03444 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.8973" upper="2.8973" effort="100" velocity="2.0"/>
+    <dynamics damping="2" friction="0.0"/>
+  </joint>
+
+  <joint name="joint6" type="revolute">
+    <parent link="link5"/>
+    <child link="link6"/>
+    <origin xyz="0 0 0" rpy="2.03444 -0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.0175" upper="3.7525" effort="100" velocity="2.0"/>
+    <dynamics damping="2" friction="0.0"/>
+  </joint>
+
+  <joint name="joint7" type="revolute">
+    <parent link="link6"/>
+    <child link="link7"/>
+    <origin xyz="0.088 0 0" rpy="2.03444 -0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.8973" upper="2.8973" effort="100" velocity="2.0"/>
+    <dynamics damping="2" friction="0.0"/>
+  </joint>
+
+  <joint name="fixed_link7_to_palm" type="fixed">
+    <parent link="link7"/>
+    <child link="palm"/>
+    <origin xyz="-0.0075 0 0.20175" rpy="0 -0 3.14159"/>
+  </joint>
+
+  <joint name="ffj0" type="revolute">
+    <parent link="palm"/>
+    <child link="ff_base"/>
+    <origin xyz="0 0.0435 -0.001542" rpy="-0.0872665 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.47" upper="0.47" effort="100" velocity="2.0"/>
+    <dynamics damping="0.1" friction="0.0"/>
+  </joint>
+
+  <joint name="ffj1" type="revolute">
+    <parent link="ff_base"/>
+    <child link="ff_proximal"/>
+    <origin xyz="0 0 0.0164" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.196" upper="1.61" effort="100" velocity="2.0"/>
+    <dynamics damping="0.1" friction="0.0"/>
+  </joint>
+
+  <joint name="ffj2" type="revolute">
+    <parent link="ff_proximal"/>
+    <child link="ff_medial"/>
+    <origin xyz="0 0 0.054" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.174" upper="1.709" effort="100" velocity="2.0"/>
+    <dynamics damping="0.1" friction="0.0"/>
+  </joint>
+
+  <joint name="ffj3" type="revolute">
+    <parent link="ff_medial"/>
+    <child link="ff_distal"/>
+    <origin xyz="0 0 0.0384" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.227" upper="1.618" effort="100" velocity="2.0"/>
+    <dynamics damping="0.1" friction="0.0"/>
+  </joint>
+
+  <joint name="fixed_ff_distal_to_ff_tip" type="fixed">
+    <parent link="ff_distal"/>
+    <child link="ff_tip"/>
+    <origin xyz="0 0 0.0265" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="mfj0" type="revolute">
+    <parent link="palm"/>
+    <child link="mf_base"/>
+    <origin xyz="0 0 0.0007" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.47" upper="0.47" effort="100" velocity="2.0"/>
+    <dynamics damping="0.1" friction="0.0"/>
+  </joint>
+
+  <joint name="mfj1" type="revolute">
+    <parent link="mf_base"/>
+    <child link="mf_proximal"/>
+    <origin xyz="0 0 0.0164" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.196" upper="1.61" effort="100" velocity="2.0"/>
+    <dynamics damping="0.1" friction="0.0"/>
+  </joint>
+
+  <joint name="mfj2" type="revolute">
+    <parent link="mf_proximal"/>
+    <child link="mf_medial"/>
+    <origin xyz="0 0 0.054" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.174" upper="1.709" effort="100" velocity="2.0"/>
+    <dynamics damping="0.1" friction="0.0"/>
+  </joint>
+
+  <joint name="mfj3" type="revolute">
+    <parent link="mf_medial"/>
+    <child link="mf_distal"/>
+    <origin xyz="0 0 0.0384" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.227" upper="1.618" effort="100" velocity="2.0"/>
+    <dynamics damping="0.1" friction="0.0"/>
+  </joint>
+
+  <joint name="fixed_mf_distal_to_mf_tip" type="fixed">
+    <parent link="mf_distal"/>
+    <child link="mf_tip"/>
+    <origin xyz="0 0 0.0265" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="rfj0" type="revolute">
+    <parent link="palm"/>
+    <child link="rf_base"/>
+    <origin xyz="0 -0.0435 -0.001542" rpy="0.0872665 -0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.47" upper="0.47" effort="100" velocity="2.0"/>
+    <dynamics damping="0.1" friction="0.0"/>
+  </joint>
+
+  <joint name="rfj1" type="revolute">
+    <parent link="rf_base"/>
+    <child link="rf_proximal"/>
+    <origin xyz="0 0 0.0164" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.196" upper="1.61" effort="100" velocity="2.0"/>
+    <dynamics damping="0.1" friction="0.0"/>
+  </joint>
+
+  <joint name="rfj2" type="revolute">
+    <parent link="rf_proximal"/>
+    <child link="rf_medial"/>
+    <origin xyz="0 0 0.054" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.174" upper="1.709" effort="100" velocity="2.0"/>
+    <dynamics damping="0.1" friction="0.0"/>
+  </joint>
+
+  <joint name="rfj3" type="revolute">
+    <parent link="rf_medial"/>
+    <child link="rf_distal"/>
+    <origin xyz="0 0 0.0384" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.227" upper="1.618" effort="100" velocity="2.0"/>
+    <dynamics damping="0.1" friction="0.0"/>
+  </joint>
+
+  <joint name="fixed_rf_distal_to_rf_tip" type="fixed">
+    <parent link="rf_distal"/>
+    <child link="rf_tip"/>
+    <origin xyz="0 0 0.0265" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="thj0" type="revolute">
+    <parent link="palm"/>
+    <child link="th_base"/>
+    <origin xyz="-0.0182 0.019333 -0.045987" rpy="3.14159 -1.48353 1.57079"/>
+    <axis xyz="-1 0 0"/>
+    <limit lower="0.263" upper="1.396" effort="100" velocity="2.0"/>
+    <dynamics damping="0.1" friction="0.0"/>
+  </joint>
+
+  <joint name="thj1" type="revolute">
+    <parent link="th_base"/>
+    <child link="th_proximal"/>
+    <origin xyz="-0.027 0.005 0.0399" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.105" upper="1.163" effort="100" velocity="2.0"/>
+    <dynamics damping="0.1" friction="0.0"/>
+  </joint>
+
+  <joint name="thj2" type="revolute">
+    <parent link="th_proximal"/>
+    <child link="th_medial"/>
+    <origin xyz="0 0 0.0177" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.189" upper="1.644" effort="100" velocity="2.0"/>
+    <dynamics damping="0.1" friction="0.0"/>
+  </joint>
+
+  <joint name="thj3" type="revolute">
+    <parent link="th_medial"/>
+    <child link="th_distal"/>
+    <origin xyz="0 0 0.0514" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.162" upper="1.719" effort="100" velocity="2.0"/>
+    <dynamics damping="0.1" friction="0.0"/>
+  </joint>
+
+  <joint name="fixed_th_distal_to_th_tip" type="fixed">
+    <parent link="th_distal"/>
+    <child link="th_tip"/>
+    <origin xyz="0 0 0.0422" rpy="0 0 0"/>
+  </joint>
+
+</robot>
