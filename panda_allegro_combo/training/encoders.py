@@ -5,9 +5,6 @@ Simple goal encoder and state encoder networks.
 
 GoalEncoder:  target_pose (3,)  → z_g (latent_dim,)
 StateEncoder: observation (32,) → z_t (latent_dim,)
-
-Both are small MLPs for now. SimCLR contrastive training
-will be layered on top of StateEncoder in a later phase.
 """
 
 import jax
@@ -15,10 +12,7 @@ import jax.numpy as jnp
 import flax.linen as nn
 from typing import Sequence
 
-
-# ---------------------------------------------------------------------------
 # Shared MLP backbone
-# ---------------------------------------------------------------------------
 
 class MLP(nn.Module):
     features: Sequence[int]
@@ -32,10 +26,7 @@ class MLP(nn.Module):
                 x = nn.relu(x)
         return x
 
-
-# ---------------------------------------------------------------------------
 # Goal Encoder   z_g = f(x_g)
-# ---------------------------------------------------------------------------
 
 class GoalEncoder(nn.Module):
     """
@@ -43,10 +34,6 @@ class GoalEncoder(nn.Module):
 
     Input:  target_pos (3,)  -- x, y, z of target placement
     Output: z_g (latent_dim,) -- normalized latent goal embedding
-
-    In Phase 1 of your thesis this will be replaced with a richer
-    encoder over LEGO Studio instruction representations. For now
-    it just learns a useful embedding of the 3D target position.
     """
     latent_dim: int = 32
     hidden_dims: Sequence[int] = (64, 64)
@@ -63,9 +50,7 @@ class GoalEncoder(nn.Module):
         return z_g
 
 
-# ---------------------------------------------------------------------------
 # State Encoder   z_t = f(x_t)
-# ---------------------------------------------------------------------------
 
 class StateEncoder(nn.Module):
     """
@@ -92,9 +77,7 @@ class StateEncoder(nn.Module):
         return z_t
 
 
-# ---------------------------------------------------------------------------
 # Policy   pi(z_t, z_g) → action
-# ---------------------------------------------------------------------------
 
 class Policy(nn.Module):
     """
@@ -102,10 +85,6 @@ class Policy(nn.Module):
 
     Input:  [z_t (latent_dim,), z_g (latent_dim,)]  concatenated
     Output: action (act_dim,) in [-1, 1]
-
-    This is the base policy from Phase 4 of your thesis.
-    Hypernet modulation and diffusion policy will replace/extend
-    this in later phases.
     """
     act_dim: int
     hidden_dims: Sequence[int] = (256, 256)
@@ -119,9 +98,7 @@ class Policy(nn.Module):
         return action
 
 
-# ---------------------------------------------------------------------------
 # Value function   V(z_t, z_g) → scalar
-# ---------------------------------------------------------------------------
 
 class ValueFunction(nn.Module):
     """
@@ -138,10 +115,7 @@ class ValueFunction(nn.Module):
         value = nn.Dense(1)(x)
         return jnp.squeeze(value, axis=-1)
 
-
-# ---------------------------------------------------------------------------
 # Combined agent (all networks in one place)
-# ---------------------------------------------------------------------------
 
 class LegoAgent(nn.Module):
     """
@@ -170,10 +144,7 @@ class LegoAgent(nn.Module):
         z_g = self.goal_encoder(target_pos)
         return self.policy(z_t, z_g)
 
-
-# ---------------------------------------------------------------------------
 # Quick test
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     import jax
