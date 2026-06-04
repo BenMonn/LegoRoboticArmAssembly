@@ -59,10 +59,6 @@ class StateEncoder(nn.Module):
     Input:  obs (32,)
               [robot_qpos(23), brick_pos(3), target_pos(3), palm_pos(3)]
     Output: z_t (latent_dim,)
-
-    In Phase 2 of your thesis this encoder will be trained with
-    SimCLR + InfoNCE contrastive loss. For now it's trained end-to-end
-    with the policy via RL.
     """
     latent_dim: int = 64
     hidden_dims: Sequence[int] = (128, 128)
