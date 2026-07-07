@@ -7,6 +7,8 @@ import optax
 from flax.training.train_state import TrainState
 import mujoco
 from math import exp
+from scipy.spatial import ConvexHull
+from itertools import product
 
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
@@ -52,19 +54,22 @@ FINGER_QPOS_IDXS = list(range(7, 23))
 FINGER_HOME      = 0.0
 FINGER_CLOSED    = 0.5
 
+INDEX_QPOS_IDXS  = list(range(7, 11))    # ffj0..3
+THUMB_QPOS_IDXS  = list(range(19, 23))   # thj0..3
+
+INDEX_HOME, INDEX_CLOSED = 0.0, 0.5
+THUMB_HOME = 0.0
+THUMB_HOME_VEC = np.array([1.9, 0.0, 0.0, 0.0])
+THUMB_CLOSED_VEC = np.array([1.9, 0.4, 0.4, 0.4])
+THUMB_CLOSED = 0.5
+PINCH_CLOSURE_THRESH     = 0.5  # tune against rollout data once training starts
+
 # Contact / lift thresholds
-PALM_THRESH = 0.08
+PALM_THRESH = 0.06   # raised from 0.08 — palm sits at 0.09-0.12 during real grasps
 LIFT_THRESH = 0.03
 
 # Domain randomization
-# Same schedule as reach / hold DR so the grasp policy sees the same
-# distribution it was trained to approach from.
-#
-# BRICK_BASE_POS: the canonical spawn point.
-# Warmup: fixed for DR_WARMUP updates so the policy can stabilise from the
-# hold-DR checkpoint before noise is introduced.
-# After warmup: XY / Z / yaw noise ramps linearly to DR_*_MAX.
-BRICK_BASE_POS = np.array([0.35, 0.0, 0.42])
+BRICK_BASE_POS = np.array([0.6, 0.0, 0.42 + 0.0096])
 DR_WARMUP      = 1000
 DR_XY_MAX      = 0.06          # ±6 cm  (matches reach/hold)
 DR_Z_MAX       = 0.01          # ±1 cm
@@ -88,20 +93,30 @@ ROBOT_XML  = os.path.expanduser("~/panda_lego/models/mjxpandamerged.xml")
 ASSETS_DIR = os.path.expanduser("~/panda_lego/models/assets")
 CKPT_DIR   = os.path.expanduser("~/panda_lego/checkpoints")
 
-# Resume from the best grasp checkpoint
-RESUME_PATH = os.path.expanduser(
-    "~/panda_lego/checkpoints/grasp_best_h07.pkl"
-)
+# Resume from the 10% success checkpoint (update 4870 in the 10k run)
+#RESUME_PATH = os.path.expanduser("~/panda_lego/checkpoints/bc_pretrained.pkl")
+RESUME_PATH = None
+
+#HOME_QPOS = np.array([
+#    -0.0413, -0.6000,  0.1060, -1.8000, -0.2379,  2.0784,  0,
+#    0.0, 0.0, 0.0, 0.0,
+#    0.0, 0.0, 0.0, 0.0,
+#    0.0, 0.0, 0.0, 0.0,
+#    0.5, 0.3, 0.5, 0.3,
+#])
 
 HOME_QPOS = np.array([
-    -0.0413, -0.5000,  0.1060, -1.8000, -0.2379,  2.0784,  0.6668,
+    0.0, -0.54, 0.0, -2.37, 0.0, 2.9, 0.0,
     0.0, 0.0, 0.0, 0.0,
     0.0, 0.0, 0.0, 0.0,
     0.0, 0.0, 0.0, 0.0,
-    0.5, 0.3, 0.5, 0.3,
+    1.2, 0.0, 0.0, 0.0
 ])
 
 VF_CLIP_RANGE = 10.0 # was 50
+
+MIDDLE_QPOS_IDXS = list(range(11,15))
+RING_QPOS_IDXS = list(range(15,19))
 
 
 # DR helper
@@ -131,7 +146,7 @@ class GraspEnv:
         self.data    = mujoco.MjData(model)
         self.palm_id = model.body("palm").id
         self.nu      = model.nu
-        self.obs_dim = 32
+        self.obs_dim = 38       #was 32
         self.act_dim = self.nu
         self.steps         = 0
         self.contact_steps = 0
@@ -154,11 +169,19 @@ class GraspEnv:
                     self.brick_id = i
                     break
 
-        self.brick_geom_ids  = self._geoms_for_body(self.brick_id)
-        self.finger_body_ids = set(range(10, 30))
-        self.finger_geom_ids = set()
-        for bid in self.finger_body_ids:
-            self.finger_geom_ids |= self._geoms_for_body(bid)
+        #self.brick_geom_ids  = self._geoms_for_body(self.brick_id)
+        #self.finger_body_ids = set(range(10, 30))
+        #self.finger_geom_ids = set()
+        #for bid in self.finger_body_ids:
+            #self.finger_geom_ids |= self._geoms_for_body(bid)
+
+        self.index_body_ids = self._geoms_for_body_name_prefix("ff_")
+        self.middle_body_ids = self._geoms_for_body_name_prefix("mf_")
+        self.ring_body_ids = self._geoms_for_body_name_prefix("rf_")
+        self.thumb_body_ids = self._geoms_for_body_name_prefix("th_")
+
+        self.index_tip_site_id = model.site("ff_tip_site").id
+        self.thumb_tip_site_id = model.site("th_tip_site").id
 
     def _geoms_for_body(self, body_id):
         geom_ids = set()
@@ -166,24 +189,157 @@ class GraspEnv:
             if self.model.geom_bodyid[g] == body_id:
                 geom_ids.add(g)
         return geom_ids
+    
+    def _geoms_for_body_name_prefix(self, prefix):
+        body_ids = set()
+        for b in range(self.model.nbody):
+            name = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_BODY, b)
+            if name and name.startswith(prefix):
+                body_ids.add(b)
+        return body_ids
+    
+    def _pinch_closure(self):
+        index_qpos = self.data.qpos[INDEX_QPOS_IDXS]   # ffj0..3, 4 joints
+        thumb_qpos = self.data.qpos[THUMB_QPOS_IDXS]    # thj0..3, 4 joints
+
+        index_closure = np.mean(np.abs(index_qpos - INDEX_HOME)) / max(abs(INDEX_CLOSED - INDEX_HOME), 1e-6)
+        thumb_range = np.abs(THUMB_CLOSED_VEC - THUMB_HOME_VEC)
+        thumb_closure = np.mean(np.abs(thumb_qpos - THUMB_HOME_VEC) / np.maximum(thumb_range, 1e-6))
+        return float(np.clip(index_closure, 0, 1)), float(np.clip(thumb_closure, 0, 1))
+
+    def _finger_label(self, body_id):
+        if body_id in self.index_body_ids:
+            return "index"
+        if body_id in self.middle_body_ids:
+            return "middle"
+        if body_id in self.ring_body_ids:
+            return "ring"
+        if body_id in self.thumb_body_ids:
+            return "thumb"
+        return None
 
     def _has_brick_contact(self):
+        contacts = []
+        brick_pos = self.data.qpos[23:26].copy()
         for c in range(self.data.ncon):
-            g1 = self.data.contact[c].geom1
-            g2 = self.data.contact[c].geom2
+            con = self.data.contact[c]
+            g1 = con.geom1
+            g2 = con.geom2
             b1 = self.model.geom_bodyid[g1]
             b2 = self.model.geom_bodyid[g2]
             if b1 == 0 or b2 == 0:
                 continue
-            if (b1 == self.brick_id and b2 in self.finger_body_ids) or \
-               (b2 == self.brick_id and b1 in self.finger_body_ids):
-                return True
-        return False
+
+            finger_body = None
+            if b1 == self.brick_id:
+                finger_body = b2
+            elif b2 == self.brick_id:
+                finger_body = b1
+            if finger_body is None:
+                continue
+
+            label = self._finger_label(finger_body)
+            if label is None or label in ("middle", "ring"):
+                continue
+
+            pos    = con.pos.copy()
+            normal = con.frame[:3].copy()  # contact normal, world frame
+
+            if b1 == self.brick_id:
+                normal = -normal
+
+            mu1 = self.model.geom_friction[g1, 0]
+            mu2 = self.model.geom_friction[g2, 0]
+            mu  = float(np.sqrt(mu1 * mu2))
+
+            contacts.append((pos, normal, mu, label))
+        return contacts
 
     def _mean_finger_closure(self):
         finger_qpos = self.data.qpos[FINGER_QPOS_IDXS]
         closure = np.mean(np.abs(finger_qpos - FINGER_HOME)) / max(abs(FINGER_CLOSED - FINGER_HOME), 1e-6)
         return float(np.clip(closure, 0.0, 1.0))
+
+    def _epsilon_quality(self, contacts, brick_centroid, n_friction_edges=6):
+        n = len(contacts)
+        if n < 2:
+            return 0.0
+
+        if n == 2:
+            (p1, n1, mu1, _), (p2, n2, mu2, _) = contacts
+            n1 = n1 / (np.linalg.norm(n1) + 1e-8)
+            n2 = n2 / (np.linalg.norm(n2) + 1e-8)
+
+            # 1. Opposition: normals should point toward each other
+            opposition = float(np.clip(np.dot(n1, -n2), 0.0, 1.0))
+
+            # 2. Axis alignment: each normal should align with the grasp axis
+            grasp_axis = p1 - p2
+            axis_len = np.linalg.norm(grasp_axis)
+            if axis_len < 1e-6:
+                return 0.0
+            grasp_axis /= axis_len
+            align1 = float(np.clip(np.dot(n1, -grasp_axis), 0.0, 1.0))
+            align2 = float(np.clip(np.dot(n2,  grasp_axis), 0.0, 1.0))
+            axis_alignment = 0.5 * (align1 + align2)
+
+            # 3. Friction margin: are the normals inside the friction cones?
+            sin1 = np.linalg.norm(np.cross(n1, -grasp_axis))
+            sin2 = np.linalg.norm(np.cross(n2,  grasp_axis))
+            margin1 = float(np.clip(1.0 - sin1 / (mu1 + 1e-8), 0.0, 1.0))
+            margin2 = float(np.clip(1.0 - sin2 / (mu2 + 1e-8), 0.0, 1.0))
+            friction_margin = 0.5 * (margin1 + margin2)
+
+            return opposition * axis_alignment * friction_margin
+
+        # n >= 3: original Ferrari-Canny wrench-space method
+        wrenches = []
+        for pos, normal, mu, _label in contacts:
+            normal = normal / (np.linalg.norm(normal) + 1e-8)
+            tmp = np.array([1.0, 0.0, 0.0]) if abs(normal[0]) < 0.9 else np.array([0.0, 1.0, 0.0])
+            t1 = np.cross(normal, tmp)
+            t1 /= (np.linalg.norm(t1) + 1e-8)
+            t2 = np.cross(normal, t1)
+
+            r = pos - brick_centroid  # moment arm
+
+            for k in range(n_friction_edges):
+                theta = 2.0 * np.pi * k / n_friction_edges
+                force_dir = normal + mu * (np.cos(theta) * t1 + np.sin(theta) * t2)
+                force_dir /= (np.linalg.norm(force_dir) + 1e-8)
+                torque = np.cross(r, force_dir)
+                wrenches.append(np.concatenate([force_dir, torque]))
+
+        wrenches = np.array(wrenches)  # shape (n*n_friction_edges, 6)
+
+        try:
+            hull = ConvexHull(wrenches)
+        except Exception:
+            return 0.0
+
+        offsets = hull.equations[:, -1]
+        if np.any(offsets > 0):
+            return 0.0
+
+        facet_normals = hull.equations[:, :-1]
+        norms = np.linalg.norm(facet_normals, axis=1)
+        distances = -offsets / (norms + 1e-8)
+        return float(np.min(distances))
+    
+    def _thumb_opposition_reward(self):
+        index_tip = self.data.site_xpos[self.index_tip_site_id]
+        thumb_tip = self.data.site_xpos[self.thumb_tip_site_id]
+        brick_pos = self.data.qpos[23:26]
+
+        # Vector from brick center to index tip, and to thumb tip.
+        # Good opposition: these point in roughly opposite directions.
+        v_index = index_tip - brick_pos
+        v_thumb = thumb_tip - brick_pos
+        n_index = v_index / (np.linalg.norm(v_index) + 1e-8)
+        n_thumb = v_thumb / (np.linalg.norm(v_thumb) + 1e-8)
+
+        opposition = -float(np.dot(n_index, n_thumb))  # -1 (same side) to +1 (opposite sides)
+        return np.clip(opposition, -1.0, 1.0)
 
     def reset(self, brick_pos=None, brick_quat=None):
         mujoco.mj_resetData(self.model, self.data)
@@ -207,20 +363,42 @@ class GraspEnv:
         robot_qpos = self.data.qpos[:23].copy()
         brick_pos  = self.data.qpos[23:26].copy()
         palm_pos   = self.data.xpos[self.palm_id].copy()
-        return np.concatenate([robot_qpos, brick_pos, TARGET_POS, palm_pos])
+        ff_tip_pos = self.data.site_xpos[self.index_tip_site_id].copy()
+        th_tip_pos = self.data.site_xpos[self.thumb_tip_site_id].copy()
+        return np.concatenate([robot_qpos, brick_pos, TARGET_POS, palm_pos, ff_tip_pos - brick_pos, th_tip_pos - brick_pos])
 
     def step(self, action, contact_hold_required):
         action = np.clip(action, -1.0, 1.0)
+        action[MIDDLE_QPOS_IDXS] = 0.0
+        action[RING_QPOS_IDXS] = 0.0
+        action[6] = 0.0
         self.data.ctrl[:] = self.ctrl_mid + action * self.ctrl_half
-        mujoco.mj_step(self.model, self.data)
+        for _ in range(5): #was 5
+            mujoco.mj_step(self.model, self.data)
+            self.data.qpos[MIDDLE_QPOS_IDXS] = 0.0
+            self.data.qpos[RING_QPOS_IDXS] = 0.0
+            self.data.qvel[MIDDLE_QPOS_IDXS] = 0.0
+            self.data.qvel[RING_QPOS_IDXS] = 0.0
+            self.data.qpos[6] = 0.0
+            self.data.qvel[6] = 0.0
+        mujoco.mj_forward(self.model, self.data)
+        #mujoco.mj_step(self.model, self.data)
         self.steps += 1
 
         brick_pos = self.data.qpos[23:26].copy()
         palm_pos  = self.data.xpos[self.palm_id].copy()
         d_palm    = np.linalg.norm(palm_pos - brick_pos)
 
-        has_contact    = self._has_brick_contact()
-        finger_closure = self._mean_finger_closure()
+        ff_tip_pos = self.data.site_xpos[self.index_tip_site_id]
+        th_tip_pos = self.data.site_xpos[self.thumb_tip_site_id]
+        d_index = np.linalg.norm(ff_tip_pos - brick_pos)
+        d_thumb = np.linalg.norm(th_tip_pos - brick_pos)
+
+        fingertip_guidance = (exp(-8.0 * d_index) * 1.5 + exp(-8.0 * d_thumb) * 1.5) * float(d_palm < 0.15)
+
+        contacts = self._has_brick_contact()
+        has_contact = len(contacts) > 0
+        index_closure, thumb_closure = self._pinch_closure()
 
         # Drift and lift are always relative to THIS episode's brick start
         brick_start_z  = self.episode_brick_start[2]
@@ -228,12 +406,15 @@ class GraspEnv:
         brick_lift     = max(0.0, brick_pos[2] - brick_start_z)
 
         # Floor penalty
-        FLOOR_MARGIN = 0.02
-        palm_floor_violation = max(0.0, brick_start_z + FLOOR_MARGIN - palm_pos[2])
+        TABLE_Z = 0.42
+        FLOOR_MARGIN = 0.01
+        palm_floor_violation = max(0.0, TABLE_Z + FLOOR_MARGIN - palm_pos[2])
         floor_penalty = -20.0 * palm_floor_violation
 
-        # Contact streak
-        near_and_closing = has_contact and d_palm < PALM_THRESH and finger_closure > 0.3
+
+        near_and_closing = (has_contact and d_palm < PALM_THRESH and
+                             index_closure > PINCH_CLOSURE_THRESH and
+                             thumb_closure > PINCH_CLOSURE_THRESH)
         if near_and_closing:
             self.contact_steps += 1
         else:
@@ -248,18 +429,19 @@ class GraspEnv:
         # Reward shaping
 
         # 1. Approach: always dense so the agent finds the brick
-        approach_reward = exp(-4.0 * d_palm) * 0.3 * (1.0 + 2.0 * float(has_contact))
+        #approach_reward = exp(-4.0 * d_palm) * 0.3 * (1.0 + 2.0 * float(has_contact))
+        approach_reward = exp(-4.0 * d_palm) * 0.3 * (1.0 + 2.0 * float(has_contact)) #* float(d_palm > PALM_THRESH)
 
         # 2. Contact bonus: gated on near_and_closing
         grasping_contact = float(near_and_closing)
         contact_bonus    = 3.0 * grasping_contact
 
-        # 3. Finger closure near brick
-        closure_reward = 0.3 * finger_closure * float(d_palm < PALM_THRESH) * float(has_contact)
-
         # 4. Contact streak reward
         streak_frac           = min(self.contact_steps, contact_hold_required) / contact_hold_required
         contact_streak_reward = 1.0 * streak_frac * (1.0 if is_holding else 0.1) # was 2.0 * ...
+
+        # Initialize done
+        done = False
 
         # 5. Shove penalty: always active
         MAX_DRIFT = 0.35
@@ -271,9 +453,9 @@ class GraspEnv:
 
         # 6. Lift bonus: gated on is_holding
         lift_bonus = 10.0 * (brick_lift ** 0.5) * float(is_holding)
-        if brick_lift > 0.02:
+        if is_holding and brick_lift > 0.02:
             lift_bonus += 5.0
-        if brick_lift > 0.05:
+        if is_holding and brick_lift > 0.05:
             lift_bonus += 10.0
 
         # 7. Terminal grasp bonus
@@ -288,14 +470,42 @@ class GraspEnv:
         lift_velocity_reward = 0.5 * max(0.0, palm_vel_z) * float(is_holding)
 
         # 10. Time penalty
-        time_penalty = -0.05 - 0.3 * max(0.0, d_palm - 0.05)
+        time_penalty = -0.01 - 0.3 * max(0.0, d_palm - 0.05)
+
+        # 11. Force-closure quality
+        pinch_contacts  = [c for c in contacts if c[3] in ("index", "thumb")]
+        grasp_quality   = self._epsilon_quality(pinch_contacts, brick_pos)
+        closure_reward  = 1.5 * grasp_quality * float(d_palm < PALM_THRESH)
+
+        # 12. Thumb opposition shaping
+        opposition_reward = 0.5 * self._thumb_opposition_reward()
+
+        #finger closing reward
+        finger_closing_reward = 0.3 * (index_closure + thumb_closure)
+
+        # palm orientation reward — compute palm_down from rotation matrix
+        palm_mat  = self.data.xmat[self.palm_id].reshape(3, 3)
+        palm_z    = palm_mat[:, 2]
+        palm_down = float(np.clip(-palm_z[2], 0.0, 1.0))
+        proximity_weight = float(np.clip(1.0 - d_palm / 0.40, 0.0, 1.0))
+        palm_orientation_reward = 0.4 * palm_down * proximity_weight
 
         reward = (approach_reward + contact_bonus + closure_reward +
-                  contact_streak_reward + shove_penalty + lift_bonus +
-                  grasp_bonus + completion_bonus + floor_penalty +
-                  lift_velocity_reward + time_penalty)
+                contact_streak_reward + shove_penalty + lift_bonus + fingertip_guidance +
+                grasp_bonus + completion_bonus + floor_penalty + finger_closing_reward +
+                lift_velocity_reward + time_penalty + opposition_reward + palm_orientation_reward)
 
-        done = success or (self.steps >= MAX_EP_STEPS)
+        # Floor penalty — AFTER reward is defined
+        TABLE_Z = 0.42  # match your table surface z
+        fingertip_ids = [self.model.body(name).id for name in 
+                 ['ff_tip', 'mf_tip', 'rf_tip', 'th_tip']]
+        min_fingertip_z = float(min(float(self.data.xpos[fid][2]) for fid in fingertip_ids))
+        if min_fingertip_z < TABLE_Z + 0.01:
+            reward -= 10.0
+            done = True
+
+        done = done or success or (self.steps >= MAX_EP_STEPS)
+        finger_closure = 0.5 * (index_closure + thumb_closure)  # kept for logging compatibility
         return self._get_obs(), reward, done, d_palm, has_contact, finger_closure
 
 
@@ -350,7 +560,7 @@ def record_rollout(mj_model, state, agent, forward_fn, update_idx, contact_hold_
     if frames:
         video_path = os.path.join(VIDEO_DIR, f"grasp_update_{update_idx:06d}.mp4")
         imageio.mimwrite(video_path, frames, fps=RECORD_FPS, quality=8)
-        print(f"  🎥 Video saved ({len(frames)} frames): {video_path}")
+        print(f"Video saved ({len(frames)} frames): {video_path}")
 
 
 # Train
@@ -363,9 +573,10 @@ def train():
     envs     = [GraspEnv(mj_model) for _ in range(N_ENVS)]
     print(f"  nq={mj_model.nq}, nu={mj_model.nu}")
     print(f"  Brick body ID: {envs[0].brick_id}")
-    print(f"  Brick geoms: {envs[0].brick_geom_ids}")
-    print(f"  Finger body IDs: {envs[0].finger_body_ids}")
-    print(f"  Finger geoms: {len(envs[0].finger_geom_ids)} geoms")
+    print(f"  Index body IDs: {envs[0].index_body_ids}")
+    print(f"  Middle body IDs: {envs[0].middle_body_ids}")
+    print(f"  Ring body IDs: {envs[0].ring_body_ids}")
+    print(f"  Thumb body IDs: {envs[0].thumb_body_ids}")
 
     _diag_env = envs[0]
     _diag_env.reset()
@@ -374,11 +585,11 @@ def train():
 
     agent  = LegoAgent(act_dim=envs[0].act_dim)
     key    = jax.random.PRNGKey(0)
-    params = agent.init(key, jnp.zeros(32), jnp.array(TARGET_POS))
+    params = agent.init(key, jnp.zeros(38), jnp.array(TARGET_POS))
     n_p    = sum(x.size for x in jax.tree_util.tree_leaves(params))
     print(f"  Agent parameters: {n_p:,}")
 
-    if os.path.exists(RESUME_PATH):
+    if RESUME_PATH is not None and os.path.exists(RESUME_PATH):
         with open(RESUME_PATH, "rb") as f:
             params = pickle.load(f)
         print(f"  Resumed from: {RESUME_PATH}")
@@ -386,8 +597,18 @@ def train():
         print(f"  WARNING: {RESUME_PATH} not found — starting from scratch.")
         print(f"  (Set RESUME_PATH to your best hold-DR checkpoint.)")
 
-    schedule = optax.linear_schedule(5e-5, 5e-6, TOTAL_UPDATES)  # v4: lower LR
-    tx = optax.chain(optax.clip_by_global_norm(MAX_GRAD_NORM), optax.adam(schedule))
+    # Separate optimizers for policy and VF heads with independent gradient clipping.
+    # A single global clip lets the VF head receive large updates when policy
+    # gradients dominate the norm, which caused the 531k VF explosions.
+    schedule = optax.linear_schedule(5e-5, 5e-6, TOTAL_UPDATES)
+
+    # Single optimizer with tighter global gradient clip.
+    # The previous clip of 0.5 allowed the VF head to receive large updates
+    # when policy gradients dominated the norm, causing the 531k VF explosions.
+    tx = optax.chain(
+        optax.clip_by_global_norm(0.3),
+        optax.adam(schedule),
+    )
     state = TrainState.create(apply_fn=agent.apply, params=params, tx=tx)
 
     @jit
@@ -450,7 +671,7 @@ def train():
         current_std = float(STD_START + frac * (STD_END - STD_START))
         std_j       = jnp.array(current_std)
 
-        obs_buf  = np.zeros((N_STEPS, N_ENVS, 32),              dtype=np.float32)
+        obs_buf  = np.zeros((N_STEPS, N_ENVS, 38),              dtype=np.float32)
         act_buf  = np.zeros((N_STEPS, N_ENVS, envs[0].act_dim), dtype=np.float32)
         logp_buf = np.zeros((N_STEPS, N_ENVS),                  dtype=np.float32)
         val_buf  = np.zeros((N_STEPS, N_ENVS),                  dtype=np.float32)
@@ -524,7 +745,7 @@ def train():
         ret_flat = ret.flatten().astype(np.float32)
         adv_flat = (adv_flat - adv_flat.mean()) / (adv_flat.std() + 1e-8)
 
-        obs_j     = jnp.array(obs_buf.reshape(-1, 32))
+        obs_j     = jnp.array(obs_buf.reshape(-1, 38))
         act_j     = jnp.array(act_buf.reshape(-1, envs[0].act_dim))
         logp_j    = jnp.array(logp_buf.flatten())
         adv_j     = jnp.array(adv_flat)
