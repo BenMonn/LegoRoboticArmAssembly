@@ -59,21 +59,21 @@ THUMB_QPOS_IDXS  = list(range(19, 23))   # thj0..3
 
 INDEX_HOME, INDEX_CLOSED = 0.0, 0.5
 THUMB_HOME = 0.0
-THUMB_HOME_VEC = np.array([1.9, 0.0, 0.0, 0.0])
-THUMB_CLOSED_VEC = np.array([1.9, 0.4, 0.4, 0.4])
+THUMB_HOME_VEC = np.array([1.2, 0.0, 0.728, 0.779])
+THUMB_CLOSED_VEC = np.array([1.9, 0.1, 1.644, 1.719])
 THUMB_CLOSED = 0.5
 PINCH_CLOSURE_THRESH     = 0.5  # tune against rollout data once training starts
 
 # Contact / lift thresholds
-PALM_THRESH = 0.06   # raised from 0.08 — palm sits at 0.09-0.12 during real grasps
+PALM_THRESH = 0.06   
 LIFT_THRESH = 0.03
 
 # Domain randomization
 BRICK_BASE_POS = np.array([0.6, 0.0, 0.42 + 0.0096])
 DR_WARMUP      = 1000
-DR_XY_MAX      = 0.06          # ±6 cm  (matches reach/hold)
-DR_Z_MAX       = 0.01          # ±1 cm
-DR_YAW_MAX     = np.deg2rad(20)  # ±20°
+DR_XY_MAX      = 0.06         
+DR_Z_MAX       = 0.01         
+DR_YAW_MAX     = np.deg2rad(20) 
 
 # v4: DR freeze gate
 DR_FREEZE_MAX    = 0.20   # cap DR at 20% until gate is passed
@@ -86,40 +86,31 @@ RECORD_INTERVAL = 1000
 RECORD_FPS      = 30
 RECORD_WIDTH    = 640
 RECORD_HEIGHT   = 480
-VIDEO_DIR       = os.path.expanduser("~/panda_lego/videos")
+VIDEO_DIR       = os.path.expanduser("~/panda_allegro_combo/videos")
 
 # Paths
-ROBOT_XML  = os.path.expanduser("~/panda_lego/models/mjxpandamerged.xml")
-ASSETS_DIR = os.path.expanduser("~/panda_lego/models/assets")
-CKPT_DIR   = os.path.expanduser("~/panda_lego/checkpoints")
+ROBOT_XML  = os.path.expanduser("~/panda_allegro_combo/models/mjxpandamerged.xml")
+ASSETS_DIR = os.path.expanduser("~/panda_allegro_combo/models/assets")
+CKPT_DIR   = os.path.expanduser("~/panda_allegro_combo/checkpoints")
 
-# Resume from the 10% success checkpoint (update 4870 in the 10k run)
-#RESUME_PATH = os.path.expanduser("~/panda_lego/checkpoints/bc_pretrained.pkl")
-RESUME_PATH = None
-
-#HOME_QPOS = np.array([
-#    -0.0413, -0.6000,  0.1060, -1.8000, -0.2379,  2.0784,  0,
-#    0.0, 0.0, 0.0, 0.0,
-#    0.0, 0.0, 0.0, 0.0,
-#    0.0, 0.0, 0.0, 0.0,
-#    0.5, 0.3, 0.5, 0.3,
-#])
+# Resume from the 10% success checkpoint
+RESUME_PATH = os.path.expanduser("~/panda_allegro_combo/checkpoints/hold_dr_agent_1000.pkl")
 
 HOME_QPOS = np.array([
-    0.0, -0.54, 0.0, -2.37, 0.0, 2.9, 0.0,
+    -0.0413, -0.6000,  0.1060, -1.8000, -0.2379,  2.0784,  0,
     0.0, 0.0, 0.0, 0.0,
     0.0, 0.0, 0.0, 0.0,
     0.0, 0.0, 0.0, 0.0,
-    1.2, 0.0, 0.0, 0.0
+    0.5, 0.0, 0.5, 0.3,
 ])
 
-VF_CLIP_RANGE = 10.0 # was 50
+VF_CLIP_RANGE = 5.0 
 
 MIDDLE_QPOS_IDXS = list(range(11,15))
 RING_QPOS_IDXS = list(range(15,19))
 
 
-# DR helper
+# DR
 def sample_brick_spawn(update, total_updates, rng, dr_unfrozen):
     if update <= DR_WARMUP:
         noise_frac = 0.0
@@ -151,7 +142,7 @@ class GraspEnv:
         self.steps         = 0
         self.contact_steps = 0
 
-        # Per-episode brick spawn — updated on reset() so all reward calculations (drift, lift) reference the correct starting position
+        # Per-episode brick spawn, updated on reset() so all reward calculations (drift, lift) reference the correct starting position
         self.episode_brick_start = BRICK_BASE_POS.copy()
 
         self.ctrl_low  = model.actuator_ctrlrange[:, 0].copy()
@@ -168,12 +159,6 @@ class GraspEnv:
                 if name and "brick" in name.lower():
                     self.brick_id = i
                     break
-
-        #self.brick_geom_ids  = self._geoms_for_body(self.brick_id)
-        #self.finger_body_ids = set(range(10, 30))
-        #self.finger_geom_ids = set()
-        #for bid in self.finger_body_ids:
-            #self.finger_geom_ids |= self._geoms_for_body(bid)
 
         self.index_body_ids = self._geoms_for_body_name_prefix("ff_")
         self.middle_body_ids = self._geoms_for_body_name_prefix("mf_")
@@ -270,10 +255,10 @@ class GraspEnv:
             n1 = n1 / (np.linalg.norm(n1) + 1e-8)
             n2 = n2 / (np.linalg.norm(n2) + 1e-8)
 
-            # 1. Opposition: normals should point toward each other
+            #Opposition: normals should point toward each other
             opposition = float(np.clip(np.dot(n1, -n2), 0.0, 1.0))
 
-            # 2. Axis alignment: each normal should align with the grasp axis
+            #Axis alignment: each normal should align with the grasp axis
             grasp_axis = p1 - p2
             axis_len = np.linalg.norm(grasp_axis)
             if axis_len < 1e-6:
@@ -283,7 +268,7 @@ class GraspEnv:
             align2 = float(np.clip(np.dot(n2,  grasp_axis), 0.0, 1.0))
             axis_alignment = 0.5 * (align1 + align2)
 
-            # 3. Friction margin: are the normals inside the friction cones?
+            #Friction margin: are the normals inside the friction cones
             sin1 = np.linalg.norm(np.cross(n1, -grasp_axis))
             sin2 = np.linalg.norm(np.cross(n2,  grasp_axis))
             margin1 = float(np.clip(1.0 - sin1 / (mu1 + 1e-8), 0.0, 1.0))
@@ -372,8 +357,9 @@ class GraspEnv:
         action[MIDDLE_QPOS_IDXS] = 0.0
         action[RING_QPOS_IDXS] = 0.0
         action[6] = 0.0
+        action[20] = 0.0
         self.data.ctrl[:] = self.ctrl_mid + action * self.ctrl_half
-        for _ in range(5): #was 5
+        for _ in range(5):
             mujoco.mj_step(self.model, self.data)
             self.data.qpos[MIDDLE_QPOS_IDXS] = 0.0
             self.data.qpos[RING_QPOS_IDXS] = 0.0
@@ -381,13 +367,22 @@ class GraspEnv:
             self.data.qvel[RING_QPOS_IDXS] = 0.0
             self.data.qpos[6] = 0.0
             self.data.qvel[6] = 0.0
+            self.data.qpos[20] = 0.0
+            self.data.qvel[20] = 0.0
         mujoco.mj_forward(self.model, self.data)
-        #mujoco.mj_step(self.model, self.data)
         self.steps += 1
 
         brick_pos = self.data.qpos[23:26].copy()
         palm_pos  = self.data.xpos[self.palm_id].copy()
         d_palm    = np.linalg.norm(palm_pos - brick_pos)
+
+        #lateral approach
+        approach_vec = brick_pos - palm_pos
+        approach_vec[2] = 0.0
+
+        #horizontal approach
+        horiz_dist = np.linalg.norm(approach_vec)
+        lateral_approach = 0.3 * float(horiz_dist < 0.20) * float(d_palm < 0.20)
 
         ff_tip_pos = self.data.site_xpos[self.index_tip_site_id]
         th_tip_pos = self.data.site_xpos[self.thumb_tip_site_id]
@@ -429,8 +424,7 @@ class GraspEnv:
         # Reward shaping
 
         # 1. Approach: always dense so the agent finds the brick
-        #approach_reward = exp(-4.0 * d_palm) * 0.3 * (1.0 + 2.0 * float(has_contact))
-        approach_reward = exp(-4.0 * d_palm) * 0.3 * (1.0 + 2.0 * float(has_contact)) #* float(d_palm > PALM_THRESH)
+        approach_reward = exp(-4.0 * d_palm) * 0.5 * (1.0 + 2.0 * float(has_contact)) * float(d_palm > 0.08)
 
         # 2. Contact bonus: gated on near_and_closing
         grasping_contact = float(near_and_closing)
@@ -438,18 +432,13 @@ class GraspEnv:
 
         # 4. Contact streak reward
         streak_frac           = min(self.contact_steps, contact_hold_required) / contact_hold_required
-        contact_streak_reward = 1.0 * streak_frac * (1.0 if is_holding else 0.1) # was 2.0 * ...
+        contact_streak_reward = 3.0 * (self.contact_steps / contact_hold_required) #1.0 * streak_frac * (1.0 if is_holding else 0.1) # was 2.0 * ...
 
         # Initialize done
         done = False
 
-        # 5. Shove penalty: always active
-        MAX_DRIFT = 0.35
-        if brick_xy_drift > MAX_DRIFT:
-            shove_penalty = -50.0
-            done = True
-        else:
-            shove_penalty = -1.0 * brick_xy_drift
+        # 5. Shove penalty
+        shove_penalty = -1.0 * max(0.0, brick_xy_drift - 0.10)
 
         # 6. Lift bonus: gated on is_holding
         lift_bonus = 10.0 * (brick_lift ** 0.5) * float(is_holding)
@@ -481,7 +470,28 @@ class GraspEnv:
         opposition_reward = 0.5 * self._thumb_opposition_reward()
 
         #finger closing reward
-        finger_closing_reward = 0.3 * (index_closure + thumb_closure)
+        finger_closing_reward = 1.5 * (index_closure + thumb_closure) * float(d_palm < 0.20)
+
+        #lift guidance
+        if self.contact_steps >= 2:
+            lift_guidance = 2.0 * max(0.0, brick_pos[2] - BRICK_BASE_POS[2])
+        else:
+            lift_guidance = 0.0
+
+        #open penalty
+        if d_palm < 0.20:
+            open_penalty = -2.0 * (1.0 - index_closure) - 2.0 * (1.0 - thumb_closure)
+        else:
+            open_penalty = 0.0
+
+        #panda joint limits
+        JOINT_LIMITS_LOW = np.array([-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973])
+        JOINT_LIMITS_HIGH = np.array([2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973])
+        arm_qpos = self.data.qpos[:7]
+        low_violation = np.maximum(0.0, JOINT_LIMITS_LOW - arm_qpos)
+        high_violation = np.maximum(0.0, arm_qpos - JOINT_LIMITS_HIGH)
+        joint_limit_penalty = -2.0 * float(np.sum(low_violation + high_violation))
+        joint1_penalty = -1.0 * abs(self.data.qpos[0])
 
         # palm orientation reward — compute palm_down from rotation matrix
         palm_mat  = self.data.xmat[self.palm_id].reshape(3, 3)
@@ -490,15 +500,15 @@ class GraspEnv:
         proximity_weight = float(np.clip(1.0 - d_palm / 0.40, 0.0, 1.0))
         palm_orientation_reward = 0.4 * palm_down * proximity_weight
 
-        reward = (approach_reward + contact_bonus + closure_reward +
+        reward = (approach_reward + contact_bonus + closure_reward + lift_guidance +
                 contact_streak_reward + shove_penalty + lift_bonus + fingertip_guidance +
                 grasp_bonus + completion_bonus + floor_penalty + finger_closing_reward +
-                lift_velocity_reward + time_penalty + opposition_reward + palm_orientation_reward)
+                lift_velocity_reward + time_penalty + opposition_reward + palm_orientation_reward + 
+                open_penalty + lateral_approach + joint_limit_penalty + joint1_penalty)
 
-        # Floor penalty — AFTER reward is defined
-        TABLE_Z = 0.42  # match your table surface z
-        fingertip_ids = [self.model.body(name).id for name in 
-                 ['ff_tip', 'mf_tip', 'rf_tip', 'th_tip']]
+        # Floor penalty, AFTER reward is defined
+        TABLE_Z = 0.42  # table surface at height z
+        fingertip_ids = [self.model.body(name).id for name in ['ff_tip', 'th_tip']]
         min_fingertip_z = float(min(float(self.data.xpos[fid][2]) for fid in fingertip_ids))
         if min_fingertip_z < TABLE_Z + 0.01:
             reward -= 10.0
@@ -554,7 +564,7 @@ def record_rollout(mj_model, state, agent, forward_fn, update_idx, contact_hold_
             break
         a, _ = forward_fn(state.params, jnp.array(obs), tgt)
         obs, _, done, _, _, _ = rec_env.step(np.array(a), contact_hold_required)
-        renderer.update_scene(rec_env.data)
+        renderer.update_scene(rec_env.data, camera="global_cam")
         frames.append(renderer.render())
     renderer.close()
     if frames:
@@ -565,7 +575,7 @@ def record_rollout(mj_model, state, agent, forward_fn, update_idx, contact_hold_
 
 # Train
 def train():
-    print("=== Panda-Lego Phase 3: Grasp (CPU sim + GPU nets) ===")
+    print("Panda-Lego: Grasp (CPU sim + GPU nets)")
     print(f"JAX devices: {jax.devices()}")
 
     print("\nBuilding MuJoCo model...")
@@ -598,13 +608,9 @@ def train():
         print(f"  (Set RESUME_PATH to your best hold-DR checkpoint.)")
 
     # Separate optimizers for policy and VF heads with independent gradient clipping.
-    # A single global clip lets the VF head receive large updates when policy
-    # gradients dominate the norm, which caused the 531k VF explosions.
     schedule = optax.linear_schedule(5e-5, 5e-6, TOTAL_UPDATES)
 
     # Single optimizer with tighter global gradient clip.
-    # The previous clip of 0.5 allowed the VF head to receive large updates
-    # when policy gradients dominated the norm, causing the 531k VF explosions.
     tx = optax.chain(
         optax.clip_by_global_norm(0.3),
         optax.adam(schedule),
@@ -641,7 +647,7 @@ def train():
     consec_bad            = 0
     best_success_rate     = 0.0
 
-    # v4: DR freeze gate state
+    # DR freeze gate state
     dr_unfrozen              = False
     dr_freeze_consec         = 0     # consecutive log intervals with contact-gated success above thresh
     all_contact_successes    = []    # parallel to all_successes: 1 if success AND contact >= DR_CONTACT_MIN
@@ -720,7 +726,7 @@ def train():
                         env.contact_steps >= contact_hold_required and
                         (env.data.qpos[25] - env.episode_brick_start[2]) >= LIFT_THRESH
                     )
-                    # v4: contact-gated success for DR freeze check
+                    # contact-gated success for DR freeze check
                     contact_success = float(true_success and ep_contacts[i] >= DR_CONTACT_MIN)
                     all_rews.append(ep_rews[i])
                     all_successes.append(float(true_success))
@@ -763,7 +769,7 @@ def train():
         if update % LOG_INTERVAL == 0:
             mr           = np.mean(all_rews[-50:])      if all_rews      else 0.0
             suc          = np.mean(all_successes[-50:]) if all_successes else 0.0
-            # v4: contact-gated success for DR freeze check
+            # contact-gated success for DR freeze check
             c_suc        = np.mean(all_contact_successes[-50:]) if all_contact_successes else 0.0
             pg, vf       = aux
             ep_len       = ep_lens.mean()
@@ -773,14 +779,14 @@ def train():
             mean_drift   = float(np.mean(ep_drifts)) if ep_drifts else 0.0
             mean_lift    = float(np.mean(ep_lifts))  if ep_lifts  else 0.0
             mean_streak  = float(np.mean(all_hold_streaks[-50:])) if all_hold_streaks else 0.0
-            # v4: noise_frac respects the DR freeze
+            #  noise_frac respects the DR freeze
             if update <= DR_WARMUP:
                 noise_frac = 0.0
             else:
                 raw_frac = min((update - DR_WARMUP) / (TOTAL_UPDATES - DR_WARMUP), 1.0)
                 noise_frac = raw_frac if dr_unfrozen else min(raw_frac, DR_FREEZE_MAX)
 
-            # v4: DR freeze gate logic
+            # DR freeze gate logic
             if not dr_unfrozen:
                 if c_suc >= DR_FREEZE_THRESH:
                     dr_freeze_consec += 1
