@@ -35,7 +35,7 @@
 
     <default class="allegro_right">
       <joint axis="0 1 0" damping=".1"/>
-      <position kp="1"/>
+      <position kp="5"/>
       <geom density="800"/>
 
       <default class="allegro_visual">
@@ -226,7 +226,7 @@
     <geom name="ground" type="plane" contype="1" conaffinity="1" pos="0 0 0" size="2 2 0.1" rgba="0.8 0.8 0.8 1"/>
     <light name="light1" pos="0 0 3" dir="0 0 -1" diffuse="0.5 0.5 0.5" specular="0.1 0.1 0.1" directional="true"/>
     <light name="top" pos="0 0 2" mode="trackcom"/>
-    <camera name="global_cam" pos="1.5 -0.2 0.6" quat="1 0.5 0.5 0.5" fovy="45"/>
+    <camera name="global_cam" pos="0.5 1.0 1.5" quat="0.0 0.0 0.383 0.924" fovy="45"/>
     <body name="link0" childclass="panda">
       <inertial mass="0.629769" pos="-0.041018 -0.00014 0.049974"
         fullinertia="0.00315 0.00388 0.004285 8.2904e-7 0.00015 8.2299e-6"/>
@@ -449,7 +449,7 @@
   </contact>
 
   <actuator>
-    <position class="panda" name="actuator1" joint="joint1" kp="600" kv="60" forcerange="-200 200"
+    <position class="panda" name="actuator1" joint="joint1" kp="300" kv="40" forcerange="-100 100"
      ctrlrange="-2.8973 2.8973"/>
     <position class="panda" name="actuator2" joint="joint2" kp="800" kv="90" forcerange="-200 200"
      ctrlrange="-1.7628 1.7628"/>
