@@ -93,7 +93,7 @@ ROBOT_XML  = os.path.expanduser("~/panda_allegro_combo/models/mjxpandamerged.xml
 ASSETS_DIR = os.path.expanduser("~/panda_allegro_combo/models/assets")
 CKPT_DIR   = os.path.expanduser("~/panda_allegro_combo/checkpoints")
 
-# Resume from the 10% success checkpoint
+# Resume from the best checkpoint
 RESUME_PATH = os.path.expanduser("~/panda_allegro_combo/checkpoints/hold_dr_agent_1000.pkl")
 
 HOME_QPOS = np.array([
