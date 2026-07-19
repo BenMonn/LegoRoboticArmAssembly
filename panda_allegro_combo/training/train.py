@@ -11,7 +11,7 @@ import imageio
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.5"
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 
-sys.path.insert(0, os.path.expanduser("~/panda_lego"))
+sys.path.insert(0, os.path.expanduser("~/panda_allegro_combo"))
 from envs.lego_env import LegoEnv, build_model
 from training.encoders import LegoAgent
 
@@ -46,7 +46,7 @@ ANNEAL_WINDOW     = 5
 # Video recording
 VIDEO_INTERVAL = 1000
 VIDEO_FPS = 30
-VIDEO_DIR = os.path.expanduser("~/panda_lego/videos")
+VIDEO_DIR = os.path.expanduser("~/panda_allegro_combo/videos")
 
 # Domain randomization for brick spawn
 BRICK_BASE_POS = np.array([0.35, 0.0, 0.42])
@@ -57,14 +57,14 @@ DR_YAW_MAX     = np.deg2rad(20)  # ±20° yaw randomization
 
 # Set to a .pkl path to resume, or None to train from scratch
 # RESUME_CHECKPOINT = None
-RESUME_CHECKPOINT = os.path.expanduser("~/panda_lego/checkpoints/reach_dr_agent_7600.pkl")
+RESUME_CHECKPOINT = os.path.expanduser("~/panda_allegro_combo/checkpoints/reach_dr_agent_7600.pkl")
 
-ROBOT_XML  = os.path.expanduser("~/panda_lego/models/mjxpandamerged.xml")
-ASSETS_DIR = os.path.expanduser("~/panda_lego/models/assets")
-CKPT_DIR   = os.path.expanduser("~/panda_lego/checkpoints")
+ROBOT_XML  = os.path.expanduser("~/panda_allegro_combo/models/mjxpandamerged.xml")
+ASSETS_DIR = os.path.expanduser("~/panda_allegro_combo/models/assets")
+CKPT_DIR   = os.path.expanduser("~/panda_allegro_combo/checkpoints")
 
 HOME_QPOS = np.array([
-    # Arm: IK-computed pose — palm at [0.35, 0.0, 0.57], 15 cm above brick, fingers pointing forward/inward, min hand Z = 0.46 (4 cm above table)
+    # Arm: IK-computed pose, palm at [0.35, 0.0, 0.57], 15 cm above brick, fingers pointing forward/inward, min hand Z = 0.46 (4 cm above table)
     -0.0413, -0.5000,  0.1060, -1.8000, -0.2379,  2.0784,  0.6668,
     # Hand: open, fingers uncurled, thumb retracted so nothing pokes downward
     0.0,  0.0,  0.0,  0.0,   # index
@@ -89,7 +89,7 @@ def get_brick_start(update, total_updates, rng=None):
 
     pos = BRICK_BASE_POS + np.array([xy_noise[0], xy_noise[1], z_noise])
 
-    # yaw → quaternion [w, x, y, z]  (rotation about world Z)
+    # yaw to quaternion [w, x, y, z]  (rotation about world Z)
     quat = np.array([
         np.cos(yaw_noise / 2),
         0.0,
@@ -158,7 +158,7 @@ class CPUEnv:
 
         # Shallower decay: stronger gradient signal in the 0.1–0.4m range
         approach_reward = np.exp(-3.0 * d_palm)
-        # Two near-bonus rings. 30cm ring omitted — fires from home pose for free
+        
         near_bonus  = 1.5 * (d_palm < 0.15)   # first real goal: 15 cm
         near_bonus += 2.0 * (d_palm < 0.07)   # close approach: 7 cm
         success       = float(d_palm < success_thresh)
